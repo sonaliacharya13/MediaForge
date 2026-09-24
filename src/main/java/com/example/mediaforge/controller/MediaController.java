@@ -1,18 +1,12 @@
 package com.example.mediaforge.controller;
 
-import java.util.List;
-
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import com.example.mediaforge.entity.Media;
+import com.example.mediaforge.dto.MediaRequest;
+import com.example.mediaforge.dto.MediaResponse;
 import com.example.mediaforge.service.MediaService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/media")
@@ -25,30 +19,38 @@ public class MediaController {
     }
 
     @PostMapping
-    public ResponseEntity<Media> createMedia(@RequestBody Media media) {
-        Media savedMedia = mediaService.saveMedia(media);
-        return ResponseEntity.ok(savedMedia);
+    public ResponseEntity<MediaResponse> createMedia(
+            @RequestBody MediaRequest request) {
+
+        return ResponseEntity.ok(mediaService.saveMedia(request));
     }
 
     @GetMapping
-    public ResponseEntity<List<Media>> getAllMedia() {
+    public ResponseEntity<List<MediaResponse>> getAllMedia() {
         return ResponseEntity.ok(mediaService.getAllMedia());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Media> getMediaById(@PathVariable Long id) {
-        return mediaService.getMediaById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
+    public ResponseEntity<MediaResponse> getMediaById(
+            @PathVariable Long id) {
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteMedia(@PathVariable Long id) {
-        if (mediaService.getMediaById(id).isEmpty()) {
+        MediaResponse response = mediaService.getMediaById(id);
+
+        if (response == null) {
             return ResponseEntity.notFound().build();
         }
 
-        mediaService.deleteMedia(id);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteMedia(
+            @PathVariable Long id) {
+
+        if (!mediaService.deleteMedia(id)) {
+            return ResponseEntity.notFound().build();
+        }
+
         return ResponseEntity.noContent().build();
     }
 }
