@@ -21,8 +21,8 @@ public class GlobalExceptionHandler {
 
         exception.getBindingResult()
                 .getFieldErrors()
-                .forEach(error ->
-                        errors.put(error.getField(), error.getDefaultMessage())
+                .forEach(error
+                        -> errors.put(error.getField(), error.getDefaultMessage())
                 );
 
         Map<String, Object> response = new HashMap<>();
@@ -39,6 +39,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneralException(
             Exception exception) {
+
+        exception.printStackTrace();
 
         Map<String, Object> response = new HashMap<>();
 
