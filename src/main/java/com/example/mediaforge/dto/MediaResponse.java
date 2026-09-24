@@ -4,13 +4,13 @@ import java.time.LocalDateTime;
 
 public class MediaResponse {
 
-    private Long id;
-    private String filename;
-    private Long originalSize;
-    private Long optimizedSize;
-    private String format;
-    private String status;
-    private LocalDateTime createdAt;
+    private final Long id;
+    private final String filename;
+    private final Long originalSize;
+    private final Long optimizedSize;
+    private final String format;
+    private final String status;
+    private final LocalDateTime createdAt;
 
     public MediaResponse(Long id, String filename, Long originalSize,
             Long optimizedSize, String format,
