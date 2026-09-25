@@ -1,20 +1,18 @@
 package com.example.mediaforge.service;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import java.io.IOException;
-import java.nio.file.Path;
+
 import com.example.mediaforge.dto.MediaRequest;
 import com.example.mediaforge.dto.MediaResponse;
 import com.example.mediaforge.dto.MediaUploadResponse;
 import com.example.mediaforge.entity.Media;
 import com.example.mediaforge.repository.MediaRepository;
-import com.example.mediaforge.service.FileStorageService;
-import com.example.mediaforge.service.ImageOptimizationService;
 
 @Service
 public class MediaService {
@@ -70,8 +68,9 @@ public class MediaService {
 
         Media savedMedia = mediaRepository.save(media);
 
-        return new MediaResponse(savedMedia.getId(),savedMedia.getFilename(),savedMedia.getOriginalSize(),savedMedia.getOptimizedSize(),savedMedia.getFormat(),savedMedia.getStatus(),savedMedia.getCreatedAt());
+        return new MediaResponse(savedMedia.getId(), savedMedia.getFilename(), savedMedia.getOriginalSize(), savedMedia.getOptimizedSize(), savedMedia.getFormat(), savedMedia.getStatus(), savedMedia.getCreatedAt());
     }
+
     public MediaUploadResponse uploadMedia(MultipartFile file) throws IOException {
 
         if (file.isEmpty()) {
