@@ -42,6 +42,11 @@ public class MediaController {
         return ResponseEntity.ok(mediaService.uploadMedia(file));
     }
 
+    @PostMapping("/{id}/optimize")
+    public ResponseEntity<MediaResponse> optimizeImage(@PathVariable Long id) throws IOException {
+        return ResponseEntity.ok(mediaService.optimizeImage(id));
+    }
+    
     @GetMapping
     public ResponseEntity<List<MediaResponse>> getAllMedia() {
         return ResponseEntity.ok(mediaService.getAllMedia());

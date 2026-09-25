@@ -6,22 +6,27 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-
+import java.io.IOException;
+import java.nio.file.Path;
 import com.example.mediaforge.dto.MediaRequest;
 import com.example.mediaforge.dto.MediaResponse;
 import com.example.mediaforge.dto.MediaUploadResponse;
 import com.example.mediaforge.entity.Media;
 import com.example.mediaforge.repository.MediaRepository;
+import com.example.mediaforge.service.FileStorageService;
+import com.example.mediaforge.service.ImageOptimizationService;
 
 @Service
 public class MediaService {
 
     private final MediaRepository mediaRepository;
     private final FileStorageService fileStorageService;
+    private final ImageOptimizationService imageOptimizationService;
 
-    public MediaService(MediaRepository mediaRepository, FileStorageService fileStorageService) {
+    public MediaService(MediaRepository mediaRepository, FileStorageService fileStorageService, ImageOptimizationService imageOptimizationService) {
         this.mediaRepository = mediaRepository;
         this.fileStorageService = fileStorageService;
+        this.imageOptimizationService = imageOptimizationService;
     }
 
     public MediaResponse saveMedia(MediaRequest request) {
@@ -42,6 +47,31 @@ public class MediaService {
         return toResponse(savedMedia);
     }
 
+    public MediaResponse optimizeImage(Long id) throws IOException {
+
+        Media media = mediaRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Media not found"));
+
+        Path inputPath = Path.of(media.getOriginalPath());
+
+        Path optimizedDirectory = fileStorageService.getOptimizedStoragePath();
+
+        String optimizedFilename = "optimized_" + media.getFilename();
+
+        Path outputPath = optimizedDirectory.resolve(optimizedFilename);
+
+        media.setStatus("PROCESSING");
+        mediaRepository.save(media);
+
+        long optimizedSize = imageOptimizationService.optimizeImage(inputPath, outputPath);
+
+        media.setOptimizedSize(optimizedSize);
+        media.setOptimizedPath(outputPath.toString());
+        media.setStatus("COMPLETED");
+
+        Media savedMedia = mediaRepository.save(media);
+
+        return new MediaResponse(savedMedia.getId(),savedMedia.getFilename(),savedMedia.getOriginalSize(),savedMedia.getOptimizedSize(),savedMedia.getFormat(),savedMedia.getStatus(),savedMedia.getCreatedAt());
+    }
     public MediaUploadResponse uploadMedia(MultipartFile file) throws IOException {
 
         if (file.isEmpty()) {
