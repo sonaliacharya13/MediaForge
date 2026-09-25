@@ -68,7 +68,17 @@ public class MediaService {
 
         Media savedMedia = mediaRepository.save(media);
 
-        return new MediaResponse(savedMedia.getId(), savedMedia.getFilename(), savedMedia.getOriginalSize(), savedMedia.getOptimizedSize(), savedMedia.getFormat(), savedMedia.getStatus(), savedMedia.getCreatedAt());
+        return new MediaResponse(savedMedia.getId(), savedMedia.getFilename(), savedMedia.getOriginalSize(), savedMedia.getOptimizedSize(), savedMedia.getFormat(), savedMedia.getStatus(), savedMedia.getCreatedAt(), calculateCompressionPercentage(savedMedia.getOriginalSize(), savedMedia.getOptimizedSize()));
+    }
+
+    private double calculateCompressionPercentage(Long originalSize, Long optimizedSize) {
+
+        if (originalSize == null || originalSize == 0 || optimizedSize == null) {
+            return 0.0;
+        }
+
+        double percentage = ((double) (originalSize - optimizedSize) / originalSize) * 100;
+        return Math.round(percentage * 100.0) / 100.0;
     }
 
     public MediaUploadResponse uploadMedia(MultipartFile file) throws IOException {
@@ -133,7 +143,11 @@ public class MediaService {
                 media.getOptimizedSize(),
                 media.getFormat(),
                 media.getStatus(),
-                media.getCreatedAt()
+                media.getCreatedAt(),
+                calculateCompressionPercentage(
+                        media.getOriginalSize(),
+                        media.getOptimizedSize()
+                )
         );
     }
 }

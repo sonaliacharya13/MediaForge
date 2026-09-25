@@ -11,10 +11,11 @@ public class MediaResponse {
     private final String format;
     private final String status;
     private final LocalDateTime createdAt;
+    private final double compressionPercentage;
 
     public MediaResponse(Long id, String filename, Long originalSize,
             Long optimizedSize, String format,
-            String status, LocalDateTime createdAt) {
+            String status, LocalDateTime createdAt, Double compressionPercentage) {
         this.id = id;
         this.filename = filename;
         this.originalSize = originalSize;
@@ -22,6 +23,7 @@ public class MediaResponse {
         this.format = format;
         this.status = status;
         this.createdAt = createdAt;
+        this.compressionPercentage = compressionPercentage;
     }
 
     public Long getId() {
@@ -50,5 +52,9 @@ public class MediaResponse {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public double getCompressionPercentage() {
+        return compressionPercentage;
     }
 }
