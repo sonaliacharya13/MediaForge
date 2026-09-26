@@ -28,13 +28,15 @@ public class MediaService {
     private final ImageOptimizationService imageOptimizationService;
     private final VideoOptimizationService videoOptimizationService;
     private final UserRepository userRepository;
+    private final AsyncMediaProcessingService asyncMediaProcessingService;
 
-    public MediaService(MediaRepository mediaRepository, FileStorageService fileStorageService, ImageOptimizationService imageOptimizationService, VideoOptimizationService videoOptimizationService, UserRepository userRepository) {
+    public MediaService(MediaRepository mediaRepository, FileStorageService fileStorageService, ImageOptimizationService imageOptimizationService, VideoOptimizationService videoOptimizationService, UserRepository userRepository, AsyncMediaProcessingService asyncMediaProcessingService) {
         this.mediaRepository = mediaRepository;
         this.fileStorageService = fileStorageService;
         this.imageOptimizationService = imageOptimizationService;
         this.videoOptimizationService = videoOptimizationService;
         this.userRepository = userRepository;
+        this.asyncMediaProcessingService = asyncMediaProcessingService;
     }
 
     public MediaResponse saveMedia(MediaRequest request) {
@@ -178,74 +180,32 @@ public class MediaService {
         );
     }
 
-    public MediaResponse optimizeMedia(Long id) throws IOException {
+    public MediaResponse optimizeMedia(Long id) {
 
         Media media = mediaRepository
                 .findByIdAndUserUsername(id, getCurrentUsername())
                 .orElseThrow(()
                         -> new IllegalArgumentException("Media not found"));
 
-        try {
-            Path inputPath = Path.of(media.getOriginalPath());
-
-            Path optimizedDirectory
-                    = fileStorageService.getOptimizedStoragePath();
-
-            String optimizedFilename
-                    = "optimized_" + media.getFilename();
-
-            Path outputPath
-                    = optimizedDirectory.resolve(optimizedFilename);
-
-            media.setStatus("PROCESSING");
-            mediaRepository.save(media);
-
-            long optimizedSize;
-
-            String format = media.getFormat().toLowerCase();
-
-            if (format.equals("jpg")
-                    || format.equals("jpeg")
-                    || format.equals("png")
-                    || format.equals("webp")) {
-
-                optimizedSize = imageOptimizationService.optimizeImage(
-                        inputPath,
-                        outputPath
-                );
-
-            } else if (format.equals("mp4")
-                    || format.equals("mov")
-                    || format.equals("avi")
-                    || format.equals("mkv")
-                    || format.equals("webm")) {
-
-                optimizedSize = videoOptimizationService.optimizeVideo(
-                        inputPath,
-                        outputPath
-                );
-
-            } else {
-                throw new IllegalArgumentException(
-                        "Unsupported media format: " + format
-                );
-            }
-
-            media.setOptimizedSize(optimizedSize);
-            media.setOptimizedPath(outputPath.toString());
-            media.setStatus("COMPLETED");
-
-            Media savedMedia = mediaRepository.save(media);
-
-            return toResponse(savedMedia);
-
-        } catch (Exception e) {
-
-            media.setStatus("FAILED");
-            mediaRepository.save(media);
-
-            throw e;
+        if ("PROCESSING".equals(media.getStatus())) {
+            throw new IllegalArgumentException(
+                    "Media is already being optimized"
+            );
         }
+
+        if ("COMPLETED".equals(media.getStatus())) {
+            throw new IllegalArgumentException(
+                    "Media has already been optimized"
+            );
+        }
+
+        media.setStatus("PROCESSING");
+
+        Media savedMedia = mediaRepository.save(media);
+
+        asyncMediaProcessingService.processMedia(savedMedia);
+
+        return toResponse(savedMedia);
     }
 
     public Path getOptimizedMedia(Long id) {
