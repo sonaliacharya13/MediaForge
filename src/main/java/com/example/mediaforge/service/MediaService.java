@@ -152,47 +152,71 @@ public class MediaService {
                 )
         );
     }
+
     public MediaResponse optimizeMedia(Long id) throws IOException {
 
         Media media = mediaRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Media not found"));
 
-        Path inputPath = Path.of(media.getOriginalPath());
+        try {
+            Path inputPath = Path.of(media.getOriginalPath());
 
-        Path optimizedDirectory =fileStorageService.getOptimizedStoragePath();
+            Path optimizedDirectory
+                    = fileStorageService.getOptimizedStoragePath();
 
-        String optimizedFilename ="optimized_" + media.getFilename();
+            String optimizedFilename
+                    = "optimized_" + media.getFilename();
 
-        Path outputPath =optimizedDirectory.resolve(optimizedFilename);
+            Path outputPath
+                    = optimizedDirectory.resolve(optimizedFilename);
 
-        media.setStatus("PROCESSING");
-        mediaRepository.save(media);
+            media.setStatus("PROCESSING");
+            mediaRepository.save(media);
 
-        long optimizedSize;
+            long optimizedSize;
 
-        String format = media.getFormat().toLowerCase();
+            String format = media.getFormat().toLowerCase();
 
-        if (format.equals("jpg") || format.equals("jpeg") || format.equals("png") || format.equals("webp")) {
+            if (format.equals("jpg")
+                    || format.equals("jpeg")
+                    || format.equals("png")
+                    || format.equals("webp")) {
 
-            optimizedSize =imageOptimizationService.optimizeImage(inputPath,outputPath);
+                optimizedSize = imageOptimizationService.optimizeImage(
+                        inputPath,
+                        outputPath
+                );
 
-        } else if (format.equals("mp4") || format.equals("mov") || format.equals("avi") || format.equals("mkv") || format.equals("webm")) {
+            } else if (format.equals("mp4")
+                    || format.equals("mov")
+                    || format.equals("avi")
+                    || format.equals("mkv")
+                    || format.equals("webm")) {
 
-                optimizedSize =videoOptimizationService.optimizeVideo(inputPath, outputPath);
+                optimizedSize = videoOptimizationService.optimizeVideo(
+                        inputPath,
+                        outputPath
+                );
 
-        } else {
+            } else {
+                throw new IllegalArgumentException(
+                        "Unsupported media format: " + format
+                );
+            }
+
+            media.setOptimizedSize(optimizedSize);
+            media.setOptimizedPath(outputPath.toString());
+            media.setStatus("COMPLETED");
+
+            Media savedMedia = mediaRepository.save(media);
+
+            return toResponse(savedMedia);
+
+        } catch (Exception e) {
+
             media.setStatus("FAILED");
             mediaRepository.save(media);
-            throw new IllegalArgumentException(
-                "Unsupported media format: " + format
-            );
+
+            throw e;
         }
-
-        media.setOptimizedSize(optimizedSize);
-        media.setOptimizedPath(outputPath.toString());
-        media.setStatus("COMPLETED");
-
-        Media savedMedia = mediaRepository.save(media);
-
-        return toResponse(savedMedia);
     }
 }
