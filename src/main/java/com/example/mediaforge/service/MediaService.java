@@ -7,6 +7,8 @@ import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -14,7 +16,9 @@ import com.example.mediaforge.dto.MediaRequest;
 import com.example.mediaforge.dto.MediaResponse;
 import com.example.mediaforge.dto.MediaUploadResponse;
 import com.example.mediaforge.entity.Media;
+import com.example.mediaforge.entity.User;
 import com.example.mediaforge.repository.MediaRepository;
+import com.example.mediaforge.repository.UserRepository;
 
 @Service
 public class MediaService {
@@ -23,16 +27,19 @@ public class MediaService {
     private final FileStorageService fileStorageService;
     private final ImageOptimizationService imageOptimizationService;
     private final VideoOptimizationService videoOptimizationService;
+    private final UserRepository userRepository;
 
-    public MediaService(MediaRepository mediaRepository, FileStorageService fileStorageService, ImageOptimizationService imageOptimizationService, VideoOptimizationService videoOptimizationService) {
+    public MediaService(MediaRepository mediaRepository, FileStorageService fileStorageService, ImageOptimizationService imageOptimizationService, VideoOptimizationService videoOptimizationService, UserRepository userRepository) {
         this.mediaRepository = mediaRepository;
         this.fileStorageService = fileStorageService;
         this.imageOptimizationService = imageOptimizationService;
         this.videoOptimizationService = videoOptimizationService;
+        this.userRepository = userRepository;
     }
 
     public MediaResponse saveMedia(MediaRequest request) {
 
+        User user = getCurrentUser();
         Media media = new Media(
                 request.getFilename(),
                 request.getOriginalSize(),
@@ -43,6 +50,8 @@ public class MediaService {
                 request.getStatus(),
                 LocalDateTime.now()
         );
+
+        media.setUser(user);
 
         Media savedMedia = mediaRepository.save(media);
 
@@ -103,6 +112,7 @@ public class MediaService {
 
         Media media = new Media();
 
+        media.setUser(getCurrentUser());
         media.setFilename(originalFilename);
         media.setOriginalSize(file.getSize());
         media.setOptimizedSize(0L);
@@ -118,20 +128,33 @@ public class MediaService {
     }
 
     public List<MediaResponse> getAllMedia() {
-        return mediaRepository.findAll()
+
+        String username = getCurrentUsername();
+
+        return mediaRepository
+                .findByUserUsernameOrderByCreatedAtDesc(
+                        username,
+                        org.springframework.data.domain.PageRequest.of(0, 100)
+                )
+                .getContent()
                 .stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     public MediaResponse getMediaById(Long id) {
-        return mediaRepository.findById(id)
+
+        return mediaRepository
+                .findByIdAndUserUsername(id, getCurrentUsername())
                 .map(this::toResponse)
                 .orElse(null);
     }
 
     public boolean deleteMedia(Long id) {
-        if (!mediaRepository.existsById(id)) {
+
+        String username = getCurrentUsername();
+
+        if (!mediaRepository.findByIdAndUserUsername(id, username).isPresent()) {
             return false;
         }
 
@@ -157,7 +180,10 @@ public class MediaService {
 
     public MediaResponse optimizeMedia(Long id) throws IOException {
 
-        Media media = mediaRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Media not found"));
+        Media media = mediaRepository
+                .findByIdAndUserUsername(id, getCurrentUsername())
+                .orElseThrow(()
+                        -> new IllegalArgumentException("Media not found"));
 
         try {
             Path inputPath = Path.of(media.getOriginalPath());
@@ -224,7 +250,10 @@ public class MediaService {
 
     public Path getOptimizedMedia(Long id) {
 
-        Media media = mediaRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Media not found"));
+        Media media = mediaRepository
+                .findByIdAndUserUsername(id, getCurrentUsername())
+                .orElseThrow(()
+                        -> new IllegalArgumentException("Media not found"));
 
         if (media.getOptimizedPath() == null) {
             throw new IllegalArgumentException("Media has not been optimized yet");
@@ -242,7 +271,10 @@ public class MediaService {
     public Page<MediaResponse> getMediaHistory(Pageable pageable) {
 
         return mediaRepository
-                .findAllByOrderByCreatedAtDesc(pageable)
+                .findByUserUsernameOrderByCreatedAtDesc(
+                        getCurrentUsername(),
+                        pageable
+                )
                 .map(this::toResponse);
     }
 
@@ -252,39 +284,45 @@ public class MediaService {
             String status,
             Pageable pageable) {
 
-        Page<Media> mediaPage;
+        String username = getCurrentUsername();
 
         if (filename != null && !filename.isBlank()) {
-
-            mediaPage = mediaRepository
-                    .findByFilenameContainingIgnoreCase(
-                            filename,
-                            pageable
-                    );
-
-        } else if (format != null && !format.isBlank()) {
-
-            mediaPage = mediaRepository
-                    .findByFormatIgnoreCase(
-                            format,
-                            pageable
-                    );
-
-        } else if (status != null && !status.isBlank()) {
-
-            mediaPage = mediaRepository
-                    .findByStatusIgnoreCase(
-                            status,
-                            pageable
-                    );
-
-        } else {
-
-            mediaPage = mediaRepository
-                    .findAllByOrderByCreatedAtDesc(pageable);
+            return mediaRepository
+                    .findByUserUsernameAndFilenameContainingIgnoreCase(
+                            username, filename, pageable)
+                    .map(this::toResponse);
         }
 
-        return mediaPage.map(this::toResponse);
+        if (format != null && !format.isBlank()) {
+            return mediaRepository
+                    .findByUserUsernameAndFormatIgnoreCase(
+                            username, format, pageable)
+                    .map(this::toResponse);
+        }
+
+        if (status != null && !status.isBlank()) {
+            return mediaRepository
+                    .findByUserUsernameAndStatusIgnoreCase(
+                            username, status, pageable)
+                    .map(this::toResponse);
+        }
+
+        return mediaRepository
+                .findByUserUsernameOrderByCreatedAtDesc(
+                        username, pageable)
+                .map(this::toResponse);
+    }
+
+    private String getCurrentUsername() {
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        return authentication.getName();
+    }
+
+    private User getCurrentUser() {
+
+        return userRepository.findByUsername(getCurrentUsername()).orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
 
 }
