@@ -219,4 +219,21 @@ public class MediaService {
             throw e;
         }
     }
+
+    public Path getOptimizedMedia(Long id) {
+
+        Media media = mediaRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Media not found"));
+
+        if (media.getOptimizedPath() == null) {
+            throw new IllegalArgumentException("Media has not been optimized yet");
+        }
+
+        Path filePath = fileStorageService.getFile(media.getOptimizedPath());
+
+        if (!java.nio.file.Files.exists(filePath)) {
+            throw new IllegalArgumentException("Optimized file not found");
+        }
+
+        return filePath;
+    }
 }

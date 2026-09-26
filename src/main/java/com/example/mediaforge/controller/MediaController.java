@@ -1,8 +1,14 @@
 package com.example.mediaforge.controller;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -70,14 +76,45 @@ public class MediaController {
     public ResponseEntity<MediaResponse> getMediaById(
             @PathVariable Long id) {
 
-        MediaResponse response =
-                mediaService.getMediaById(id);
+        MediaResponse response
+                = mediaService.getMediaById(id);
 
         if (response == null) {
             return ResponseEntity.notFound().build();
         }
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{id}/download")
+    public ResponseEntity<Resource> downloadMedia(
+            @PathVariable Long id) {
+
+        Path filePath = mediaService.getOptimizedMedia(id);
+
+        Resource resource = new FileSystemResource(filePath);
+
+        String contentType;
+
+        try {
+            contentType = Files.probeContentType(filePath);
+        } catch (IOException e) {
+            contentType = null;
+        }
+
+        if (contentType == null) {
+            contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+        }
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\""
+                        + filePath.getFileName()
+                        + "\""
+                )
+                .body(resource);
     }
 
     @DeleteMapping("/{id}")
