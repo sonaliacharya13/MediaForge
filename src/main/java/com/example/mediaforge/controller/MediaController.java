@@ -46,6 +46,11 @@ public class MediaController {
     public ResponseEntity<MediaResponse> optimizeImage(@PathVariable Long id) throws IOException {
         return ResponseEntity.ok(mediaService.optimizeImage(id));
     }
+
+    @PostMapping("/{id}/optimize-video")
+    public ResponseEntity<MediaResponse> optimizeVideo(@PathVariable Long id) throws IOException {
+        return ResponseEntity.ok(mediaService.optimizeVideo(id));
+    }
     
     @GetMapping
     public ResponseEntity<List<MediaResponse>> getAllMedia() {

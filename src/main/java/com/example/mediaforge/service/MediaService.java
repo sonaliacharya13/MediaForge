@@ -20,11 +20,13 @@ public class MediaService {
     private final MediaRepository mediaRepository;
     private final FileStorageService fileStorageService;
     private final ImageOptimizationService imageOptimizationService;
+    private final VideoOptimizationService videoOptimizationService;
 
-    public MediaService(MediaRepository mediaRepository, FileStorageService fileStorageService, ImageOptimizationService imageOptimizationService) {
+    public MediaService(MediaRepository mediaRepository, FileStorageService fileStorageService, ImageOptimizationService imageOptimizationService, VideoOptimizationService videoOptimizationService) {
         this.mediaRepository = mediaRepository;
         this.fileStorageService = fileStorageService;
         this.imageOptimizationService = imageOptimizationService;
+        this.videoOptimizationService = videoOptimizationService;
     }
 
     public MediaResponse saveMedia(MediaRequest request) {
@@ -148,6 +150,43 @@ public class MediaService {
                         media.getOriginalSize(),
                         media.getOptimizedSize()
                 )
+        );
+    }
+    public MediaResponse optimizeVideo(Long id) throws IOException {
+
+        Media media = mediaRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Media not found"));
+
+        Path inputPath = Path.of(media.getOriginalPath());
+
+        Path optimizedDirectory =fileStorageService.getOptimizedStoragePath();
+
+        String optimizedFilename ="optimized_" + media.getFilename();
+
+        Path outputPath =optimizedDirectory.resolve(optimizedFilename);
+
+        media.setStatus("PROCESSING");
+        mediaRepository.save(media);
+
+        long optimizedSize =videoOptimizationService.optimizeVideo(inputPath,outputPath);
+
+        media.setOptimizedSize(optimizedSize);
+        media.setOptimizedPath(outputPath.toString());
+        media.setStatus("COMPLETED");
+
+        Media savedMedia = mediaRepository.save(media);
+
+        return new MediaResponse(
+            savedMedia.getId(),
+            savedMedia.getFilename(),
+            savedMedia.getOriginalSize(),
+            savedMedia.getOptimizedSize(),
+            savedMedia.getFormat(),
+            savedMedia.getStatus(),
+            savedMedia.getCreatedAt(),
+            calculateCompressionPercentage(
+                    savedMedia.getOriginalSize(),
+                    savedMedia.getOptimizedSize()
+            )
         );
     }
 }
