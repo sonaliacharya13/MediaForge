@@ -27,6 +27,10 @@ import com.example.mediaforge.service.MediaService;
 
 import jakarta.validation.Valid;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 @RestController
 @RequestMapping("/api/media")
 public class MediaController {
@@ -115,6 +119,18 @@ public class MediaController {
                         + "\""
                 )
                 .body(resource);
+    }
+
+    @GetMapping("/history")
+    public ResponseEntity<Page<MediaResponse>> getMediaHistory(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        return ResponseEntity.ok(
+                mediaService.getMediaHistory(pageable)
+        );
     }
 
     @DeleteMapping("/{id}")
