@@ -1,6 +1,5 @@
 package com.example.mediaforge.controller;
 
-import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.List;
 
@@ -13,9 +12,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import com.example.mediaforge.dto.MediaUploadResponse;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.example.mediaforge.dto.MediaRequest;
 import com.example.mediaforge.dto.MediaResponse;
+import com.example.mediaforge.dto.MediaUploadResponse;
 import com.example.mediaforge.service.MediaService;
 
 import jakarta.validation.Valid;
@@ -34,34 +35,43 @@ public class MediaController {
     public ResponseEntity<MediaResponse> createMedia(
             @Valid @RequestBody MediaRequest request) {
 
-        return ResponseEntity.ok(mediaService.saveMedia(request));
+        return ResponseEntity.ok(
+                mediaService.saveMedia(request)
+        );
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<MediaUploadResponse> uploadMedia(@RequestParam("file") MultipartFile file) throws IOException {
-        return ResponseEntity.ok(mediaService.uploadMedia(file));
+    public ResponseEntity<MediaUploadResponse> uploadMedia(
+            @RequestParam("file") MultipartFile file) throws IOException {
+
+        return ResponseEntity.ok(
+                mediaService.uploadMedia(file)
+        );
     }
 
     @PostMapping("/{id}/optimize")
-    public ResponseEntity<MediaResponse> optimizeImage(@PathVariable Long id) throws IOException {
-        return ResponseEntity.ok(mediaService.optimizeImage(id));
+    public ResponseEntity<MediaResponse> optimizeMedia(
+            @PathVariable Long id) throws IOException {
+
+        return ResponseEntity.ok(
+                mediaService.optimizeMedia(id)
+        );
     }
 
-    @PostMapping("/{id}/optimize-video")
-    public ResponseEntity<MediaResponse> optimizeVideo(@PathVariable Long id) throws IOException {
-        return ResponseEntity.ok(mediaService.optimizeVideo(id));
-    }
-    
     @GetMapping
     public ResponseEntity<List<MediaResponse>> getAllMedia() {
-        return ResponseEntity.ok(mediaService.getAllMedia());
+
+        return ResponseEntity.ok(
+                mediaService.getAllMedia()
+        );
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<MediaResponse> getMediaById(
             @PathVariable Long id) {
 
-        MediaResponse response = mediaService.getMediaById(id);
+        MediaResponse response =
+                mediaService.getMediaById(id);
 
         if (response == null) {
             return ResponseEntity.notFound().build();

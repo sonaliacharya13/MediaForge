@@ -152,7 +152,7 @@ public class MediaService {
                 )
         );
     }
-    public MediaResponse optimizeVideo(Long id) throws IOException {
+    public MediaResponse optimizeMedia(Long id) throws IOException {
 
         Media media = mediaRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Media not found"));
 
@@ -167,7 +167,25 @@ public class MediaService {
         media.setStatus("PROCESSING");
         mediaRepository.save(media);
 
-        long optimizedSize =videoOptimizationService.optimizeVideo(inputPath,outputPath);
+        long optimizedSize;
+
+        String format = media.getFormat().toLowerCase();
+
+        if (format.equals("jpg") || format.equals("jpeg") || format.equals("png") || format.equals("webp")) {
+
+            optimizedSize =imageOptimizationService.optimizeImage(inputPath,outputPath);
+
+        } else if (format.equals("mp4") || format.equals("mov") || format.equals("avi") || format.equals("mkv") || format.equals("webm")) {
+
+                optimizedSize =videoOptimizationService.optimizeVideo(inputPath, outputPath);
+
+        } else {
+            media.setStatus("FAILED");
+            mediaRepository.save(media);
+            throw new IllegalArgumentException(
+                "Unsupported media format: " + format
+            );
+        }
 
         media.setOptimizedSize(optimizedSize);
         media.setOptimizedPath(outputPath.toString());
@@ -175,18 +193,6 @@ public class MediaService {
 
         Media savedMedia = mediaRepository.save(media);
 
-        return new MediaResponse(
-            savedMedia.getId(),
-            savedMedia.getFilename(),
-            savedMedia.getOriginalSize(),
-            savedMedia.getOptimizedSize(),
-            savedMedia.getFormat(),
-            savedMedia.getStatus(),
-            savedMedia.getCreatedAt(),
-            calculateCompressionPercentage(
-                    savedMedia.getOriginalSize(),
-                    savedMedia.getOptimizedSize()
-            )
-        );
+        return toResponse(savedMedia);
     }
 }
