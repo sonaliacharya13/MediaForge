@@ -245,4 +245,46 @@ public class MediaService {
                 .findAllByOrderByCreatedAtDesc(pageable)
                 .map(this::toResponse);
     }
+
+    public Page<MediaResponse> searchMedia(
+            String filename,
+            String format,
+            String status,
+            Pageable pageable) {
+
+        Page<Media> mediaPage;
+
+        if (filename != null && !filename.isBlank()) {
+
+            mediaPage = mediaRepository
+                    .findByFilenameContainingIgnoreCase(
+                            filename,
+                            pageable
+                    );
+
+        } else if (format != null && !format.isBlank()) {
+
+            mediaPage = mediaRepository
+                    .findByFormatIgnoreCase(
+                            format,
+                            pageable
+                    );
+
+        } else if (status != null && !status.isBlank()) {
+
+            mediaPage = mediaRepository
+                    .findByStatusIgnoreCase(
+                            status,
+                            pageable
+                    );
+
+        } else {
+
+            mediaPage = mediaRepository
+                    .findAllByOrderByCreatedAtDesc(pageable);
+        }
+
+        return mediaPage.map(this::toResponse);
+    }
+
 }

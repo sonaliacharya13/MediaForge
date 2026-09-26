@@ -9,4 +9,19 @@ import com.example.mediaforge.entity.Media;
 public interface MediaRepository extends JpaRepository<Media, Long> {
 
     Page<Media> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
+    Page<Media> findByStatusIgnoreCase(
+            String status,
+            Pageable pageable
+    );
+
+    Page<Media> findByFormatIgnoreCase(
+            String format,
+            Pageable pageable
+    );
+
+    Page<Media> findByFilenameContainingIgnoreCase(
+            String filename,
+            Pageable pageable
+    );
 }

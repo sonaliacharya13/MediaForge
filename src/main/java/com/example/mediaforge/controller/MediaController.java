@@ -7,6 +7,9 @@ import java.util.List;
 
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -26,10 +29,6 @@ import com.example.mediaforge.dto.MediaUploadResponse;
 import com.example.mediaforge.service.MediaService;
 
 import jakarta.validation.Valid;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 
 @RestController
 @RequestMapping("/api/media")
@@ -130,6 +129,26 @@ public class MediaController {
 
         return ResponseEntity.ok(
                 mediaService.getMediaHistory(pageable)
+        );
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<Page<MediaResponse>> searchMedia(
+            @RequestParam(required = false) String filename,
+            @RequestParam(required = false) String format,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        return ResponseEntity.ok(
+                mediaService.searchMedia(
+                        filename,
+                        format,
+                        status,
+                        pageable
+                )
         );
     }
 
