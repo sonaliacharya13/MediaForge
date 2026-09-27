@@ -1,0 +1,31 @@
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: mediaforge-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: mediaforge
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  mediaforge:
+    build: .
+    container_name: mediaforge-app
+    restart: unless-stopped
+    depends_on:
+      - mysql
+    ports:
+      - "8080:8080"
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/mediaforge
+    volumes:
+      - ./storage:/app/storage
+
+volumes:
+  mysql_data:

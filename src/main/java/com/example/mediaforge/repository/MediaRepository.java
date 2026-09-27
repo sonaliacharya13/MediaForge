@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.example.mediaforge.entity.Media;
 
-public interface MediaRepository extends JpaRepository<Media, Long> {
+public interface MediaRepository extends JpaRepository<Media, Long>, org.springframework.data.jpa.repository.JpaSpecificationExecutor<Media> {
 
     Page<Media> findByUserUsernameOrderByCreatedAtDesc(
             String username,

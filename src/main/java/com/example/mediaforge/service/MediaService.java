@@ -19,6 +19,7 @@ import com.example.mediaforge.entity.Media;
 import com.example.mediaforge.entity.User;
 import com.example.mediaforge.repository.MediaRepository;
 import com.example.mediaforge.repository.UserRepository;
+import com.example.mediaforge.repository.MediaSpecification;
 
 @Service
 public class MediaService {
@@ -246,30 +247,29 @@ public class MediaService {
 
         String username = getCurrentUsername();
 
+        org.springframework.data.jpa.domain.Specification<Media> specification
+                = MediaSpecification.belongsToUser(username);
+
         if (filename != null && !filename.isBlank()) {
-            return mediaRepository
-                    .findByUserUsernameAndFilenameContainingIgnoreCase(
-                            username, filename, pageable)
-                    .map(this::toResponse);
+            specification = specification.and(
+                    MediaSpecification.filenameContains(filename)
+            );
         }
 
         if (format != null && !format.isBlank()) {
-            return mediaRepository
-                    .findByUserUsernameAndFormatIgnoreCase(
-                            username, format, pageable)
-                    .map(this::toResponse);
+            specification = specification.and(
+                    MediaSpecification.formatEquals(format)
+            );
         }
 
         if (status != null && !status.isBlank()) {
-            return mediaRepository
-                    .findByUserUsernameAndStatusIgnoreCase(
-                            username, status, pageable)
-                    .map(this::toResponse);
+            specification = specification.and(
+                    MediaSpecification.statusEquals(status)
+            );
         }
 
         return mediaRepository
-                .findByUserUsernameOrderByCreatedAtDesc(
-                        username, pageable)
+                .findAll(specification, pageable)
                 .map(this::toResponse);
     }
 
