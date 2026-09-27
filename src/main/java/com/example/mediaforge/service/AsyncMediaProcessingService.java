@@ -6,6 +6,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.example.mediaforge.entity.Media;
+import com.example.mediaforge.entity.MediaStatus;
 import com.example.mediaforge.repository.MediaRepository;
 
 @Service
@@ -32,7 +33,7 @@ public class AsyncMediaProcessingService {
     public void processMedia(Media media) {
 
         try {
-            media.setStatus("PROCESSING");
+            media.setStatus(MediaStatus.PROCESSING);
             mediaRepository.save(media);
 
             Path inputPath = Path.of(media.getOriginalPath());
@@ -79,13 +80,13 @@ public class AsyncMediaProcessingService {
 
             media.setOptimizedSize(optimizedSize);
             media.setOptimizedPath(outputPath.toString());
-            media.setStatus("COMPLETED");
+            media.setStatus(MediaStatus.COMPLETED);
 
             mediaRepository.save(media);
 
         } catch (Exception e) {
 
-            media.setStatus("FAILED");
+            media.setStatus(MediaStatus.FAILED);
             mediaRepository.save(media);
         }
     }
