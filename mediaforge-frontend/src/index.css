@@ -987,3 +987,8 @@ body {
   cursor: pointer;
   text-align: left;
 }
+
+.status-failed {
+  background: #f9e5e5 !important;
+  color: #8a3333 !important;
+}

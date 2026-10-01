@@ -49,12 +49,46 @@ function Dashboard() {
 
       setError(
         err.response?.data?.message ||
-        err.response?.data ||
-        "Failed to load media."
+          err.response?.data ||
+          "Failed to load media."
       );
     } finally {
       setLoadingMedia(false);
     }
+  };
+
+  /*
+   * Wait for asynchronous optimization to finish.
+   *
+   * Backend flow:
+   * PENDING -> PROCESSING -> COMPLETED
+   *                         -> FAILED
+   */
+  const waitForOptimization = async (mediaId) => {
+    const maxAttempts = 60;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const response = await api.get(`/media/${mediaId}`);
+
+      const currentMedia = response.data;
+
+      if (currentMedia.status === "COMPLETED") {
+        return currentMedia;
+      }
+
+      if (currentMedia.status === "FAILED") {
+        throw new Error("Media optimization failed.");
+      }
+
+      // Check again after 2 seconds.
+      await new Promise((resolve) =>
+        setTimeout(resolve, 2000)
+      );
+    }
+
+    throw new Error(
+      "Optimization is taking too long. Please check History."
+    );
   };
 
   const handleLogout = () => {
@@ -92,7 +126,10 @@ function Dashboard() {
     formData.append("file", file);
 
     try {
-      // 1. Upload media
+      // =========================
+      // 1. UPLOAD MEDIA
+      // =========================
+
       const uploadResponse = await api.post(
         "/media/upload",
         formData
@@ -110,20 +147,47 @@ function Dashboard() {
         "Media uploaded. Starting optimization..."
       );
 
-      // 2. Optimize media
+      // Refresh immediately so PENDING/PROCESSING
+      // can appear in the dashboard.
+      await fetchMedia();
+
+      // =========================
+      // 2. START OPTIMIZATION
+      // =========================
+
       setOptimizing(true);
 
       await api.post(
         `/media/${mediaId}/optimize`
       );
 
-      setMessage(
-        "Optimization completed successfully."
-      );
+      // =========================
+      // 3. WAIT FOR COMPLETION
+      // =========================
+
+      const optimizedMedia =
+        await waitForOptimization(mediaId);
+
+      if (optimizedMedia.status === "COMPLETED") {
+        setMessage(
+          "Media optimization completed successfully."
+        );
+      }
 
       setFile(null);
 
-      // 3. Refresh media list
+      // Clear file input visually.
+      const fileInput =
+        document.getElementById("media-file");
+
+      if (fileInput) {
+        fileInput.value = "";
+      }
+
+      // =========================
+      // 4. REFRESH DASHBOARD
+      // =========================
+
       await fetchMedia();
 
     } catch (err) {
@@ -134,10 +198,15 @@ function Dashboard() {
 
       setError(
         err.response?.data?.message ||
-        err.response?.data ||
-        err.message ||
-        "Upload or optimization failed."
+          err.response?.data ||
+          err.message ||
+          "Upload or optimization failed."
       );
+
+      // Still refresh because backend may have
+      // changed the status to FAILED.
+      await fetchMedia();
+
     } finally {
       setUploading(false);
       setOptimizing(false);
@@ -170,8 +239,8 @@ function Dashboard() {
 
       setError(
         err.response?.data?.message ||
-        err.response?.data ||
-        "Failed to delete media."
+          err.response?.data ||
+          "Failed to delete media."
       );
     }
   };
@@ -219,11 +288,15 @@ function Dashboard() {
 
       setError(
         err.response?.data?.message ||
-        err.response?.data ||
-        "Failed to download media."
+          err.response?.data ||
+          "Failed to download media."
       );
     }
   };
+
+  // =========================
+  // STATISTICS
+  // =========================
 
   const totalMedia = media.length;
 
@@ -261,6 +334,10 @@ function Dashboard() {
     (1024 * 1024)
   ).toFixed(2);
 
+  // =========================
+  // HELPERS
+  // =========================
+
   const formatSize = (bytes) => {
     if (!bytes || bytes === 0) {
       return "0 B";
@@ -282,7 +359,7 @@ function Dashboard() {
       bytes /
       Math.pow(1024, index)
     ).toFixed(index === 0 ? 0 : 2)} ${
-      units[index]
+      units[index] || "GB"
     }`;
   };
 
@@ -305,10 +382,31 @@ function Dashboard() {
     return `${percentage.toFixed(1)}%`;
   };
 
+  const getStatusClass = (status) => {
+    switch (status) {
+      case "COMPLETED":
+        return "status-completed";
+
+      case "PROCESSING":
+        return "status-processing";
+
+      case "PENDING":
+        return "status-pending";
+
+      case "FAILED":
+        return "status-failed";
+
+      default:
+        return "status-default";
+    }
+  };
+
   return (
     <div className="app-layout">
 
-      {/* SIDEBAR */}
+      {/* =========================
+          SIDEBAR
+      ========================= */}
 
       <aside className="sidebar">
 
@@ -330,30 +428,42 @@ function Dashboard() {
 
         <nav className="sidebar-nav">
 
-          <a
-            href="#dashboard"
+          <button
+            type="button"
             className="nav-item active"
+            onClick={() =>
+              navigate("/dashboard")
+            }
           >
             <span>⌂</span>
             Dashboard
-          </a>
+          </button>
 
-          <a
-            href="#upload"
+          <button
+            type="button"
             className="nav-item"
+            onClick={() =>
+              document
+                .getElementById("upload")
+                ?.scrollIntoView({
+                  behavior: "smooth",
+                })
+            }
           >
             <span>↑</span>
             Upload Media
-          </a>
+          </button>
 
           <button
-  type="button"
-  className="nav-item"
-  onClick={() => navigate("/history")}
->
-  <span>◷</span>
-  History
-</button>
+            type="button"
+            className="nav-item"
+            onClick={() =>
+              navigate("/history")
+            }
+          >
+            <span>◷</span>
+            History
+          </button>
 
         </nav>
 
@@ -372,7 +482,9 @@ function Dashboard() {
 
       </aside>
 
-      {/* MAIN AREA */}
+      {/* =========================
+          MAIN AREA
+      ========================= */}
 
       <div className="main-area">
 
@@ -389,8 +501,6 @@ function Dashboard() {
             </p>
           </div>
 
-          {/* ACTUAL LOGGED-IN USER */}
-
           <div className="user-area">
 
             <div className="user-avatar">
@@ -406,6 +516,10 @@ function Dashboard() {
           </div>
 
         </header>
+
+        {/* =========================
+            CONTENT
+        ========================= */}
 
         <main
           className="dashboard-content"
@@ -432,7 +546,9 @@ function Dashboard() {
 
           </section>
 
-          {/* STATISTICS */}
+          {/* =========================
+              STATISTICS
+          ========================= */}
 
           <section className="stats-grid">
 
@@ -534,7 +650,9 @@ function Dashboard() {
 
           </section>
 
-          {/* MESSAGES */}
+          {/* =========================
+              MESSAGES
+          ========================= */}
 
           {message && (
             <div className="success">
@@ -548,11 +666,15 @@ function Dashboard() {
             </div>
           )}
 
-          {/* WORKSPACE */}
+          {/* =========================
+              WORKSPACE
+          ========================= */}
 
           <section className="workspace">
 
-            {/* UPLOAD */}
+            {/* =========================
+                UPLOAD
+            ========================= */}
 
             <div
               className="upload-card"
@@ -617,6 +739,12 @@ function Dashboard() {
                     disabled={uploading}
                     style={{
                       marginTop: "10px",
+                      opacity: uploading
+                        ? 0.6
+                        : 1,
+                      cursor: uploading
+                        ? "not-allowed"
+                        : "pointer",
                     }}
                   >
                     {uploading
@@ -627,11 +755,20 @@ function Dashboard() {
                   </button>
                 )}
 
+                {optimizing && (
+                  <small>
+                    MediaForge is processing
+                    your file. Please wait...
+                  </small>
+                )}
+
               </div>
 
             </div>
 
-            {/* RECENT ACTIVITY */}
+            {/* =========================
+                RECENT ACTIVITY
+            ========================= */}
 
             <div
               className="activity-card"
@@ -652,13 +789,16 @@ function Dashboard() {
                   </p>
 
                 </div>
+
                 <button
-  type="button"
-  className="text-btn"
-  onClick={() => navigate("/history")}
->
-  View all
-</button>
+                  type="button"
+                  className="text-btn"
+                  onClick={() =>
+                    navigate("/history")
+                  }
+                >
+                  View all
+                </button>
 
               </div>
 
@@ -731,7 +871,11 @@ function Dashboard() {
 
                         <div className="media-status">
 
-                          <span>
+                          <span
+                            className={getStatusClass(
+                              item.status
+                            )}
+                          >
                             {item.status}
                           </span>
 
