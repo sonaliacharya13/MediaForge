@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { useTheme } from "../context/ThemeContext";
 
 function getUsernameFromToken() {
   const token = localStorage.getItem("token");
@@ -20,6 +21,9 @@ function getUsernameFromToken() {
 
 function Dashboard() {
   const navigate = useNavigate();
+
+  // Theme hook MUST be inside the component
+  const { darkMode, toggleTheme } = useTheme();
 
   const [file, setFile] = useState(null);
   const [media, setMedia] = useState([]);
@@ -80,7 +84,7 @@ function Dashboard() {
         throw new Error("Media optimization failed.");
       }
 
-      // Check again after 2 seconds.
+      // Check again after 2 seconds
       await new Promise((resolve) =>
         setTimeout(resolve, 2000)
       );
@@ -176,7 +180,7 @@ function Dashboard() {
 
       setFile(null);
 
-      // Clear file input visually.
+      // Clear file input visually
       const fileInput =
         document.getElementById("media-file");
 
@@ -203,7 +207,7 @@ function Dashboard() {
           "Upload or optimization failed."
       );
 
-      // Still refresh because backend may have
+      // Refresh because backend may have
       // changed the status to FAILED.
       await fetchMedia();
 
@@ -272,6 +276,7 @@ function Dashboard() {
         document.createElement("a");
 
       link.href = url;
+
       link.download =
         filename || "optimized-media";
 
@@ -503,6 +508,22 @@ function Dashboard() {
 
           <div className="user-area">
 
+            {/* THEME TOGGLE */}
+
+            <button
+              type="button"
+              className="theme-toggle"
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
+              title={
+                darkMode
+                  ? "Switch to light mode"
+                  : "Switch to dark mode"
+              }
+            >
+              {darkMode ? "☀" : "☾"}
+            </button>
+
             <div className="user-avatar">
               {username
                 .charAt(0)
@@ -718,9 +739,7 @@ function Dashboard() {
                   id="media-file"
                   type="file"
                   accept="image/*,video/*"
-                  onChange={
-                    handleFileChange
-                  }
+                  onChange={handleFileChange}
                   hidden
                 />
 
