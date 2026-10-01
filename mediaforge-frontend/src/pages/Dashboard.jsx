@@ -2,6 +2,22 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 
+function getUsernameFromToken() {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    return "User";
+  }
+
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.sub || "User";
+  } catch (error) {
+    console.error("Invalid JWT token:", error);
+    return "User";
+  }
+}
+
 function Dashboard() {
   const navigate = useNavigate();
 
@@ -15,9 +31,7 @@ function Dashboard() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  // --------------------------------------------------
-  // Load media
-  // --------------------------------------------------
+  const username = getUsernameFromToken();
 
   useEffect(() => {
     fetchMedia();
@@ -43,18 +57,10 @@ function Dashboard() {
     }
   };
 
-  // --------------------------------------------------
-  // Logout
-  // --------------------------------------------------
-
   const handleLogout = () => {
     localStorage.removeItem("token");
     navigate("/");
   };
-
-  // --------------------------------------------------
-  // Select file
-  // --------------------------------------------------
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -68,10 +74,6 @@ function Dashboard() {
 
     setFile(selectedFile);
   };
-
-  // --------------------------------------------------
-  // Upload + Optimize
-  // --------------------------------------------------
 
   const handleUpload = async (e) => {
     e.preventDefault();
@@ -87,19 +89,13 @@ function Dashboard() {
     setError("");
 
     const formData = new FormData();
-
     formData.append("file", file);
 
     try {
-      // Upload
+      // 1. Upload media
       const uploadResponse = await api.post(
         "/media/upload",
         formData
-      );
-
-      console.log(
-        "Upload response:",
-        uploadResponse.data
       );
 
       const mediaId = uploadResponse.data.id;
@@ -114,7 +110,7 @@ function Dashboard() {
         "Media uploaded. Starting optimization..."
       );
 
-      // Start optimization
+      // 2. Optimize media
       setOptimizing(true);
 
       await api.post(
@@ -127,7 +123,7 @@ function Dashboard() {
 
       setFile(null);
 
-      // Refresh dashboard data
+      // 3. Refresh media list
       await fetchMedia();
 
     } catch (err) {
@@ -147,10 +143,6 @@ function Dashboard() {
       setOptimizing(false);
     }
   };
-
-  // --------------------------------------------------
-  // Delete media
-  // --------------------------------------------------
 
   const handleDelete = async (id) => {
     const confirmed = window.confirm(
@@ -174,10 +166,7 @@ function Dashboard() {
       await fetchMedia();
 
     } catch (err) {
-      console.error(
-        "Delete error:",
-        err
-      );
+      console.error("Delete error:", err);
 
       setError(
         err.response?.data?.message ||
@@ -186,10 +175,6 @@ function Dashboard() {
       );
     }
   };
-
-  // --------------------------------------------------
-  // Download optimized media
-  // --------------------------------------------------
 
   const handleDownload = async (id, filename) => {
     try {
@@ -211,9 +196,8 @@ function Dashboard() {
         }
       );
 
-      const url = window.URL.createObjectURL(
-        blob
-      );
+      const url =
+        window.URL.createObjectURL(blob);
 
       const link =
         document.createElement("a");
@@ -231,10 +215,7 @@ function Dashboard() {
       window.URL.revokeObjectURL(url);
 
     } catch (err) {
-      console.error(
-        "Download error:",
-        err
-      );
+      console.error("Download error:", err);
 
       setError(
         err.response?.data?.message ||
@@ -243,10 +224,6 @@ function Dashboard() {
       );
     }
   };
-
-  // --------------------------------------------------
-  // Statistics
-  // --------------------------------------------------
 
   const totalMedia = media.length;
 
@@ -265,8 +242,7 @@ function Dashboard() {
       if (
         item.originalSize &&
         item.optimizedSize &&
-        item.optimizedSize <
-          item.originalSize
+        item.optimizedSize < item.originalSize
       ) {
         return (
           total +
@@ -284,10 +260,6 @@ function Dashboard() {
     storageSaved /
     (1024 * 1024)
   ).toFixed(2);
-
-  // --------------------------------------------------
-  // Format file size
-  // --------------------------------------------------
 
   const formatSize = (bytes) => {
     if (!bytes || bytes === 0) {
@@ -314,10 +286,6 @@ function Dashboard() {
     }`;
   };
 
-  // --------------------------------------------------
-  // Compression percentage
-  // --------------------------------------------------
-
   const getCompression = (item) => {
     if (
       !item.originalSize ||
@@ -337,10 +305,6 @@ function Dashboard() {
     return `${percentage.toFixed(1)}%`;
   };
 
-  // --------------------------------------------------
-  // Render
-  // --------------------------------------------------
-
   return (
     <div className="app-layout">
 
@@ -356,6 +320,7 @@ function Dashboard() {
 
           <div>
             <h1>MediaForge</h1>
+
             <span>
               Media Platform
             </span>
@@ -381,13 +346,14 @@ function Dashboard() {
             Upload Media
           </a>
 
-          <a
-            href="#history"
-            className="nav-item"
-          >
-            <span>◷</span>
-            History
-          </a>
+          <button
+  type="button"
+  className="nav-item"
+  onClick={() => navigate("/history")}
+>
+  <span>◷</span>
+  History
+</button>
 
         </nav>
 
@@ -423,19 +389,23 @@ function Dashboard() {
             </p>
           </div>
 
+          {/* ACTUAL LOGGED-IN USER */}
+
           <div className="user-area">
 
             <div className="user-avatar">
-              U
+              {username
+                .charAt(0)
+                .toUpperCase()}
             </div>
 
-            <span>User</span>
+            <span>
+              {username}
+            </span>
 
           </div>
 
         </header>
-
-        {/* DASHBOARD */}
 
         <main
           className="dashboard-content"
@@ -449,7 +419,7 @@ function Dashboard() {
             <div>
 
               <h1>
-                Welcome back
+                Welcome back, {username}
               </h1>
 
               <p>
@@ -564,7 +534,7 @@ function Dashboard() {
 
           </section>
 
-          {/* GLOBAL MESSAGES */}
+          {/* MESSAGES */}
 
           {message && (
             <div className="success">
@@ -682,6 +652,13 @@ function Dashboard() {
                   </p>
 
                 </div>
+                <button
+  type="button"
+  className="text-btn"
+  onClick={() => navigate("/history")}
+>
+  View all
+</button>
 
               </div>
 
