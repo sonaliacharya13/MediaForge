@@ -2,8 +2,7 @@
 .github
 .idea
 .vscode
-target/*
-!target/mediaforge-0.0.1-SNAPSHOT.jar
+target
 storage
 .env
 README.md
